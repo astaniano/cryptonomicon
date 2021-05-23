@@ -108,12 +108,15 @@
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
           {{ selectedTicker.name }} - USD
         </h3>
-        <div class="flex items-end border-gray-600 border-b border-l h-64">
+        <div
+          class="flex items-end border-gray-600 border-b border-l h-64"
+          ref="graph"
+        >
           <div
             v-for="(bar, idx) in normalizedGraph"
             :key="idx"
-            :style="{ height: `${bar}%` }"
-            class="bg-purple-800 border w-10"
+            :style="{ height: `${bar}%`, width: `${graphBarWidth}px` }"
+            class="bg-purple-800 border"
           ></div>
         </div>
         <button
@@ -158,13 +161,14 @@ export default {
     return {
       page: 1,
 
+      tickers: [],
       ticker: "",
       filter: "",
-
       selectedTicker: null,
 
       graph: [],
-      tickers: [],
+      maxGraphElements: 1,
+      graphBarWidth: 38,
     };
   },
 
@@ -191,6 +195,14 @@ export default {
         });
       });
     }
+  },
+
+  mounted() {
+    window.addEventListener("resize", this.calculateMaxGraphElements);
+  },
+
+  beforeDestroy() {
+    window.removeEventListener("resize", this.calculateMaxGraphElements);
   },
 
   computed: {
@@ -236,6 +248,13 @@ export default {
   },
 
   methods: {
+    calculateMaxGraphElements() {
+      if (!this.$refs.graph) {
+        return;
+      }
+      this.maxGraphElements = this.$refs.graph.clientWidth / this.graphBarWidth;
+    },
+
     formatPrice(price) {
       if (price === "-") {
         return price;
@@ -250,6 +269,9 @@ export default {
           t.price = price;
           if (t === this.selectedTicker) {
             this.graph.push(price);
+            while (this.graph.length > this.maxGraphElements) {
+              this.graph.shift();
+            }
           }
         });
     },
@@ -285,6 +307,7 @@ export default {
   watch: {
     selectedTicker() {
       this.graph = [];
+      this.$nextTick().then(this.calculateMaxGraphElements());
     },
 
     tickers() {
